@@ -174,13 +174,6 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
     const seasonBounds = getSeasonBounds(records);
     const lastCapturedAt = seasonBounds.end;
     const filteredRecords = records;
-    const seasonEndMs = seasonBounds.end ? new Date(seasonBounds.end).getTime() : null;
-    const marketWindowRecords =
-      seasonEndMs === null
-        ? []
-        : records.filter(
-            (record) => new Date(record.created_at).getTime() >= seasonEndMs - 24 * 60 * 60 * 1000
-          );
 
     const grouped = new Map<string, RawRecord[]>();
     for (const ticket of ALL_TICKETS) {
@@ -212,7 +205,7 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
       .filter((series): series is ChartSeries => series !== null);
 
     const marketOverviewSeries: ChartSeries[] = ALL_TICKETS.map((ticket) => {
-      const seriesRecords = marketWindowRecords.filter(
+      const seriesRecords = filteredRecords.filter(
         (record) => record.ticket_level === ticket.level && record.ticket_type === ticket.type
       );
       const summary = buildSummary(seriesRecords, ticket);

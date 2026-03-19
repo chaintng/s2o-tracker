@@ -25,8 +25,8 @@ const INTERVAL_OPTIONS: { label: string; value: Interval }[] = [
   { label: "1d", value: "1D" },
 ];
 const TICKET_SECTIONS: { level: TicketLevel; label: string }[] = [
-  { level: "regular", label: "Regular Ticket" },
   { level: "vip", label: "VIP Ticket" },
+  { level: "regular", label: "Regular Ticket" },
 ];
 
 function formatPrice(value: number | null): string {
@@ -123,14 +123,22 @@ export default function App() {
   const detailSeries = activeTicket
     ? visibleSeries.filter((series) => isSameTicket(series.key, activeTicket))
     : visibleSeries;
-  const orderedTicketStates = ALL_TICKETS.map((ticket) => {
-    const summary = summaries.find((item) => isSameTicket(item.key, ticket)) ?? null;
+  const orderedTicketStates = [...ALL_TICKETS]
+    .sort((left, right) => {
+      if (left.level !== right.level) {
+        return left.level === "vip" ? -1 : 1;
+      }
 
-    return {
-      key: ticket,
-      summary,
-    };
-  });
+      return 0;
+    })
+    .map((ticket) => {
+      const summary = summaries.find((item) => isSameTicket(item.key, ticket)) ?? null;
+
+      return {
+        key: ticket,
+        summary,
+      };
+    });
   const durationLabel =
     seasonBounds.start && seasonBounds.end
       ? `${formatDateTime(seasonBounds.start)} to ${formatDateTime(seasonBounds.end)}`
@@ -232,12 +240,12 @@ export default function App() {
                                 <div className="text-right">
                                   <p
                                     className={`text-sm font-medium ${summary === null
-                                        ? "text-[#5f6b7a]"
-                                        : summary.changeRate === null
-                                          ? "text-[#848e9c]"
-                                          : summary.changeRate >= 0
-                                            ? "text-[#0ecb81]"
-                                            : "text-[#f6465d]"
+                                      ? "text-[#5f6b7a]"
+                                      : summary.changeRate === null
+                                        ? "text-[#848e9c]"
+                                        : summary.changeRate >= 0
+                                          ? "text-[#0ecb81]"
+                                          : "text-[#f6465d]"
                                       }`}
                                   >
                                     {summary ? formatChange(summary.changeRate) : "N/A"}
@@ -254,7 +262,7 @@ export default function App() {
 
               <section className="market-section">
                 <div className="flex flex-col gap-2 px-4 py-3 sm:px-5">
-                  <p className="market-kicker">24h technical chart · 10m bars</p>
+                  <p className="market-kicker">Technical chart · 10m bars</p>
                   <div className="legend-row">
                     {marketOverviewSeries.map((series) => (
                       <span key={ticketKey(series.key)} className="legend-chip">
@@ -274,6 +282,7 @@ export default function App() {
                   activeLinePoints={[]}
                   activeCandles={[]}
                   heightClassName="h-[225px] sm:h-[255px] lg:h-[220px]"
+                  initialWindowHours={24}
                 />
               </section>
 
@@ -552,7 +561,7 @@ export default function App() {
               </div>
             </section>
 
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-[220px] sm:min-h-[260px]">
               <PriceChart
                 mode={mode}
                 interval={interval}
@@ -561,7 +570,7 @@ export default function App() {
                 activeTicket={activeTicket}
                 activeLinePoints={activeLinePoints}
                 activeCandles={activeCandles}
-                heightClassName="h-[320px] sm:h-[360px] lg:h-full"
+                heightClassName="h-full"
               />
             </div>
 

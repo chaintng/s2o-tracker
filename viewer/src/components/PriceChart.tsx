@@ -55,6 +55,7 @@ interface Props {
   activeLinePoints: LinePoint[];
   activeCandles: OHLCPoint[];
   heightClassName?: string;
+  initialWindowHours?: number | null;
 }
 
 const CHART_BG = "transparent";
@@ -71,7 +72,8 @@ function buildLineOption(
   visibleSeries: SeriesData[],
   activeTicket: TicketKey | null,
   activeLinePoints: LinePoint[],
-  interval: Interval
+  interval: Interval,
+  zoomWindow: { start: number; end: number }
 ): ECOption {
   const showVolume = activeTicket !== null && activeLinePoints.length > 0;
 
@@ -198,6 +200,8 @@ function buildLineOption(
         type: "inside",
         xAxisIndex: showVolume ? [0, 1] : [0],
         filterMode: "none",
+        start: zoomWindow.start,
+        end: zoomWindow.end,
       },
     ],
     series: [
@@ -250,7 +254,8 @@ function buildLineOption(
 function buildCandlestickOption(
   candles: OHLCPoint[],
   activeTicket: TicketKey | null,
-  interval: Interval
+  interval: Interval,
+  zoomWindow: { start: number; end: number }
 ): ECOption {
   const categories = candles.map((point) => formatAxisTime(point.time, interval));
 
@@ -339,6 +344,8 @@ function buildCandlestickOption(
         type: "inside",
         xAxisIndex: [0, 1],
         filterMode: "none",
+        start: zoomWindow.start,
+        end: zoomWindow.end,
       },
     ],
     series: [
@@ -380,6 +387,7 @@ export function PriceChart({
   activeLinePoints,
   activeCandles,
   heightClassName = "h-[460px]",
+  initialWindowHours = null,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<echarts.ECharts | null>(null);
@@ -408,6 +416,34 @@ export function PriceChart({
     const nextSpan = Math.min(100, span + 15);
     const center = zoomWindow.start + span / 2;
     applyZoom(center - nextSpan / 2, center + nextSpan / 2);
+  };
+
+  const getInitialZoomWindow = () => {
+    if (initialWindowHours === null || initialWindowHours <= 0) {
+      return { start: 0, end: 100 };
+    }
+
+    const seriesTimestamps = visibleSeries.flatMap((series) =>
+      series.points.map((point) => new Date(point.time).getTime())
+    );
+
+    if (seriesTimestamps.length === 0) {
+      return { start: 0, end: 100 };
+    }
+
+    const latestMs = Math.max(...seriesTimestamps);
+    const earliestMs = Math.min(...seriesTimestamps);
+    const totalSpanMs = latestMs - earliestMs;
+
+    if (totalSpanMs <= 0) {
+      return { start: 0, end: 100 };
+    }
+
+    const windowStartMs = latestMs - initialWindowHours * 60 * 60 * 1000;
+    const clampedStartMs = Math.max(earliestMs, windowStartMs);
+    const start = ((clampedStartMs - earliestMs) / totalSpanMs) * 100;
+
+    return { start, end: 100 };
   };
 
   useEffect(() => {
@@ -441,7 +477,9 @@ export function PriceChart({
       return;
     }
 
-    setZoomWindow({ start: 0, end: 100 });
+    const nextZoomWindow =
+      mode === "candlestick" ? { start: 0, end: 100 } : getInitialZoomWindow();
+    setZoomWindow(nextZoomWindow);
 
     if (mode === "candlestick") {
       if (activeCandles.length === 0) {
@@ -449,9 +487,12 @@ export function PriceChart({
         return;
       }
 
-      chartRef.current.setOption(buildCandlestickOption(activeCandles, activeTicket, interval), {
-        notMerge: true,
-      });
+      chartRef.current.setOption(
+        buildCandlestickOption(activeCandles, activeTicket, interval, nextZoomWindow),
+        {
+          notMerge: true,
+        }
+      );
       return;
     }
 
@@ -461,12 +502,12 @@ export function PriceChart({
     }
 
     chartRef.current.setOption(
-      buildLineOption(visibleSeries, activeTicket, activeLinePoints, interval),
+      buildLineOption(visibleSeries, activeTicket, activeLinePoints, interval, nextZoomWindow),
       {
         notMerge: true,
       }
     );
-  }, [mode, interval, visibleSeries, activeTicket, activeLinePoints, activeCandles]);
+  }, [mode, interval, visibleSeries, activeTicket, activeLinePoints, activeCandles, initialWindowHours]);
 
   const emptyState =
     mode === "candlestick"
@@ -476,7 +517,7 @@ export function PriceChart({
   const hasData = mode === "candlestick" ? activeCandles.length > 0 : visibleSeries.length > 0;
 
   return (
-    <div className="relative border-[#1f2630] bg-[#0b0e11]">
+    <div className={`relative border-[#1f2630] bg-[#0b0e11] ${heightClassName}`}>
       <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[#f0b90b]/8 to-transparent" />
       {loading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#0b0e11]/78 backdrop-blur-sm">
@@ -502,7 +543,7 @@ export function PriceChart({
           −
         </button>
       </div>
-      <div ref={containerRef} className={`w-full ${heightClassName}`} />
+      <div ref={containerRef} className="h-full w-full" />
     </div>
   );
 }
