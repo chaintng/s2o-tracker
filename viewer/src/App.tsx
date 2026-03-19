@@ -25,8 +25,8 @@ const INTERVAL_OPTIONS: { label: string; value: Interval }[] = [
   { label: "1d", value: "1D" },
 ];
 const TICKET_SECTIONS: { level: TicketLevel; label: string }[] = [
-  { level: "vip", label: "VIP Ticket" },
-  { level: "regular", label: "Regular Ticket" },
+  { level: "vip", label: "VIP" },
+  { level: "regular", label: "Regular" },
 ];
 
 function formatPrice(value: number | null): string {
@@ -223,7 +223,7 @@ export default function App() {
                                     style={{ backgroundColor: color }}
                                   />
                                   <p
-                                    className={`truncate text-sm font-medium ${summary ? "text-[#f0f4f8]" : "text-[#5f6b7a]"
+                                    className={`text-sm font-medium ${summary ? "text-[#f0f4f8]" : "text-[#5f6b7a]"
                                       }`}
                                   >
                                     {ticketShortLabel(key)}
