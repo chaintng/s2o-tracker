@@ -150,7 +150,7 @@ export default function App() {
       </a>
       <span>, visit </span>
       <a
-        href="https://github.com/chaintng/s2o-tracker"
+        href="https://github.com/chaintng"
         target="_blank"
         rel="noreferrer"
         className="footer-link"
