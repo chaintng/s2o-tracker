@@ -16,7 +16,7 @@ import {
 } from "./types";
 
 type ViewMode = "market" | "detail";
-const RESALE_URL = "https://resale.eventpop.me/e/s2o-2026?utm_source=chaintng-s2o-tracker";
+const RESALE_URL = "https://resale.eventpop.me/e/s2o-2026?utm_source=chaintng-s2o-price-tracker";
 
 const INTERVAL_OPTIONS: { label: string; value: Interval }[] = [
   { label: "10m", value: "10m" },
