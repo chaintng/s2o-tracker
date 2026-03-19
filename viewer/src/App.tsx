@@ -141,7 +141,7 @@ export default function App() {
     });
   const durationLabel =
     seasonBounds.start && seasonBounds.end
-      ? `${formatDateTime(seasonBounds.start)} to ${formatDateTime(seasonBounds.end)}`
+      ? <><span>{formatDateTime(seasonBounds.start)}</span><span> to {formatDateTime(seasonBounds.end)}</span></>
       : "Waiting for season data";
   const footerCredit = (
     <>
@@ -378,7 +378,7 @@ export default function App() {
                     <div className="min-w-0 flex-1">
                       <p className="market-stat-label">Spot price</p>
                       <div className="mt-1 flex items-end gap-2">
-                        <p className="truncate text-[38px] font-semibold leading-none text-[#f0f4f8]">
+                        <p className="text-[38px] font-semibold leading-none text-[#f0f4f8]">
                           {formatPrice(focusOverview.currentPrice)}
                         </p>
                         <p
@@ -393,7 +393,7 @@ export default function App() {
                         </p>
                       </div>
                       <p className="mt-2 text-sm text-[#848e9c]">
-                        {interval} bars across {durationLabel}
+                        {durationLabel}
                       </p>
                     </div>
 
@@ -516,11 +516,11 @@ export default function App() {
                 <div className="min-w-0">
                   <p className="market-stat-label">Spot price</p>
                   <div className="mt-1 flex items-end gap-2">
-                    <p className="truncate text-[38px] font-semibold leading-none text-[#f0f4f8] sm:text-[44px]">
+                    <p className="text-[34px] font-semibold leading-none text-[#f0f4f8] sm:text-[44px]">
                       {formatPrice(focusOverview.currentPrice)}
                     </p>
                     <p
-                      className={`pb-1 text-base font-medium sm:text-lg ${activeSummary?.changeRate === null
+                      className={`pb-1 text-base font-medium text-sm sm:text-lg ${activeSummary?.changeRate === null
                         ? "text-[#848e9c]"
                         : (activeSummary?.changeRate ?? 0) >= 0
                           ? "text-[#0ecb81]"
@@ -531,7 +531,7 @@ export default function App() {
                     </p>
                   </div>
                   <p className="mt-2 text-sm text-[#848e9c]">
-                    {interval} bars across {durationLabel}
+                    {durationLabel}
                   </p>
                 </div>
 
