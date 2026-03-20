@@ -11,6 +11,17 @@ export interface RawRecord {
   created_at: string;
 }
 
+export interface BucketedRecord {
+  ticket_level: TicketLevel;
+  ticket_type: TicketType;
+  bucket_at: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 export interface OHLCPoint {
   time: string;
   open: number;

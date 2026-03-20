@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { getSeasonBounds, toLineSeries, toOHLC } from "../lib/ohlc";
+import { getSeasonBounds } from "../lib/ohlc";
 import { supabase } from "../lib/supabase";
 import {
   ALL_TICKETS,
+  BucketedRecord,
   Interval,
   LinePoint,
   OHLCPoint,
@@ -64,7 +65,13 @@ interface UseTicketDataReturn {
   focusOverview: FocusOverview;
 }
 
-let cache: { data: RawRecord[]; fetchedAt: number } | null = null;
+interface RecordsCache {
+  data: RawRecord[];
+  fetchedAt: number;
+  bucketedByInterval: Partial<Record<Interval, BucketedRecord[]>>;
+}
+
+let cache: RecordsCache | null = null;
 const REFRESH_INTERVAL_MS = 2 * 60 * 1000;
 
 function buildSummary(records: RawRecord[], key: TicketKey): TicketSummary {
@@ -102,8 +109,28 @@ function buildSummary(records: RawRecord[], key: TicketKey): TicketSummary {
   };
 }
 
+async function fetchBucketedRecords(interval: Interval): Promise<BucketedRecord[]> {
+  const { data, error } = await supabase.schema("temp").rpc("s2o_price_buckets", {
+    p_interval: interval,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data) {
+    throw new Error(`Missing bucketed data for interval ${interval}`);
+  }
+
+  return (data as BucketedRecord[]).sort(
+    (left, right) => new Date(left.bucket_at).getTime() - new Date(right.bucket_at).getTime()
+  );
+}
+
 export function useTicketData(options: UseTicketDataOptions): UseTicketDataReturn {
   const [records, setRecords] = useState<RawRecord[]>([]);
+  const [intervalBuckets, setIntervalBuckets] = useState<BucketedRecord[]>([]);
+  const [overviewBuckets, setOverviewBuckets] = useState<BucketedRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null);
@@ -112,8 +139,16 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
     let mounted = true;
 
     async function run(forceRefresh = false) {
-      if (!forceRefresh && cache && Date.now() - cache.fetchedAt < REFRESH_INTERVAL_MS) {
+      if (
+        !forceRefresh &&
+        cache &&
+        Date.now() - cache.fetchedAt < REFRESH_INTERVAL_MS &&
+        cache.bucketedByInterval[options.interval] &&
+        cache.bucketedByInterval["10m"]
+      ) {
         setRecords(cache.data);
+        setIntervalBuckets(cache.bucketedByInterval[options.interval] ?? []);
+        setOverviewBuckets(cache.bucketedByInterval["10m"] ?? []);
         setFetchedAt(new Date(cache.fetchedAt));
         setLoading(false);
         return;
@@ -139,8 +174,24 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
       }
 
       const nextRecords = (data ?? []) as RawRecord[];
-      cache = { data: nextRecords, fetchedAt: Date.now() };
+      const nextIntervalBuckets = await fetchBucketedRecords(options.interval);
+      const nextOverviewBuckets =
+        options.interval === "10m"
+          ? nextIntervalBuckets
+          : await fetchBucketedRecords("10m");
+
+      cache = {
+        data: nextRecords,
+        fetchedAt: Date.now(),
+        bucketedByInterval: {
+          ...(cache?.bucketedByInterval ?? {}),
+          [options.interval]: nextIntervalBuckets,
+          "10m": nextOverviewBuckets,
+        },
+      };
       setRecords(nextRecords);
+      setIntervalBuckets(nextIntervalBuckets);
+      setOverviewBuckets(nextOverviewBuckets);
       setFetchedAt(new Date(cache.fetchedAt));
       setLoading(false);
     }
@@ -168,7 +219,7 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
       mounted = false;
       window.clearInterval(intervalId);
     };
-  }, []);
+  }, [options.interval]);
 
   return useMemo<UseTicketDataReturn>(() => {
     const seasonBounds = getSeasonBounds(records);
@@ -176,6 +227,8 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
     const filteredRecords = records;
 
     const grouped = new Map<string, RawRecord[]>();
+    const bucketedGrouped = new Map<string, BucketedRecord[]>();
+    const overviewGrouped = new Map<string, BucketedRecord[]>();
     for (const ticket of ALL_TICKETS) {
       const bucket = filteredRecords.filter(
         (record) => record.ticket_level === ticket.level && record.ticket_type === ticket.type
@@ -183,20 +236,38 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
       if (bucket.length > 0) {
         grouped.set(ticketKey(ticket), bucket);
       }
+
+      const intervalBucket = intervalBuckets.filter(
+        (record) => record.ticket_level === ticket.level && record.ticket_type === ticket.type
+      );
+      if (intervalBucket.length > 0) {
+        bucketedGrouped.set(ticketKey(ticket), intervalBucket);
+      }
+
+      const overviewBucket = overviewBuckets.filter(
+        (record) => record.ticket_level === ticket.level && record.ticket_type === ticket.type
+      );
+      if (overviewBucket.length > 0) {
+        overviewGrouped.set(ticketKey(ticket), overviewBucket);
+      }
     }
 
-    const visibleSeries: ChartSeries[] = [...grouped.entries()]
+    const visibleSeries: ChartSeries[] = [...bucketedGrouped.entries()]
       .map(([seriesKey, seriesRecords]) => {
         const key = ALL_TICKETS.find((ticket) => ticketKey(ticket) === seriesKey);
         if (!key) {
           return null;
         }
 
-        const summary = buildSummary(seriesRecords, key);
+        const summary = buildSummary(grouped.get(seriesKey) ?? [], key);
         return {
           key,
           color: TICKET_COLORS[seriesKey] ?? "#38bdf8",
-          points: toLineSeries(seriesRecords, options.interval),
+          points: seriesRecords.map((record) => ({
+            time: record.bucket_at,
+            price: record.close,
+            volume: record.volume,
+          })),
           latestPrice: summary.latestPrice,
           latestVolume: summary.latestVolume,
           changeRate: summary.changeRate,
@@ -205,15 +276,17 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
       .filter((series): series is ChartSeries => series !== null);
 
     const marketOverviewSeries: ChartSeries[] = ALL_TICKETS.map((ticket) => {
-      const seriesRecords = filteredRecords.filter(
-        (record) => record.ticket_level === ticket.level && record.ticket_type === ticket.type
-      );
-      const summary = buildSummary(seriesRecords, ticket);
+      const summary = buildSummary(grouped.get(ticketKey(ticket)) ?? [], ticket);
+      const seriesRecords = overviewGrouped.get(ticketKey(ticket)) ?? [];
 
       return {
         key: ticket,
         color: TICKET_COLORS[ticketKey(ticket)] ?? "#38bdf8",
-        points: toLineSeries(seriesRecords, "10m"),
+        points: seriesRecords.map((record) => ({
+          time: record.bucket_at,
+          price: record.close,
+          volume: record.volume,
+        })),
         latestPrice: summary.latestPrice,
         latestVolume: summary.latestVolume,
         changeRate: summary.changeRate,
@@ -241,6 +314,9 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
       : [];
     const activeSummary =
       summaries.find((summary) => isSameTicket(summary.key, activeTicket)) ?? null;
+    const activeBucketedRecords = activeTicket
+      ? bucketedGrouped.get(ticketKey(activeTicket)) ?? []
+      : [];
 
     const numericPrices = filteredRecords.map((record) => record.offer_price);
     const focusPrices = activeRecords.map((record) => record.offer_price);
@@ -278,13 +354,26 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
       summaries,
       activeTicket,
       activeSummary,
-      activeLinePoints: toLineSeries(activeRecords, options.interval),
-      activeCandles: toOHLC(activeRecords, options.interval),
+      activeLinePoints: activeBucketedRecords.map((record) => ({
+        time: record.bucket_at,
+        price: record.close,
+        volume: record.volume,
+      })),
+      activeCandles: activeBucketedRecords.map((record) => ({
+        time: record.bucket_at,
+        open: record.open,
+        high: record.high,
+        low: record.low,
+        close: record.close,
+        volume: record.volume,
+      })),
       overview,
       focusOverview,
     };
   }, [
     records,
+    intervalBuckets,
+    overviewBuckets,
     loading,
     error,
     fetchedAt,
