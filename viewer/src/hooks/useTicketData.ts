@@ -126,7 +126,7 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
         .schema("temp")
         .from("s2o_historical_price")
         .select("ticket_level, ticket_type, offer_price, offer_volume, created_at")
-        .order("created_at", { ascending: true });
+        .order("created_at", { ascending: false });
 
       if (!mounted) {
         return;
@@ -235,9 +235,9 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
 
     const activeRecords = activeTicket
       ? filteredRecords.filter(
-          (record) =>
-            record.ticket_level === activeTicket.level && record.ticket_type === activeTicket.type
-        )
+        (record) =>
+          record.ticket_level === activeTicket.level && record.ticket_type === activeTicket.type
+      )
       : [];
     const activeSummary =
       summaries.find((summary) => isSameTicket(summary.key, activeTicket)) ?? null;
