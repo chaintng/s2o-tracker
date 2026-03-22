@@ -133,12 +133,12 @@ export default function App() {
       </a>
       <span>, visit </span>
       <a
-        href="https://instagram.com/chaintng"
+        href="https://github.com/chaintng/s2o-price-tracker"
         target="_blank"
         rel="noreferrer"
         className="footer-link"
       >
-        Instagram
+        GitHub ⭐
       </a>
     </>
   );
