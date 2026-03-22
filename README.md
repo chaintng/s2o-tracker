@@ -2,6 +2,9 @@
 > - THIS IS HOBBY PROJECT AND HAS NOTHING RELATED TO S2O EVENT ORGANIZER
 > - **DO NOT** JUDGE ANY CODE, IT'S MY SCRAP PAPER, FOR ENTERTAINMENT PURPOSE
 
+# Contact me
+Instagram [@chaintng](https://instagram.com/chaintng)
+
 # S2O Price Tracker
 This project contain 2 apps `fetcher` and `viewer`
 
