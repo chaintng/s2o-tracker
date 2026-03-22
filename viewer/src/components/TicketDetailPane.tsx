@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { formatDateTime } from "../lib/ohlc";
 import { ChartMode, Interval, LinePoint, OHLCPoint, TicketKey, TicketSummary, isSameTicket, ticketKey, ticketLabel, ticketShortLabel } from "../types";
+import { PriceAlertPanel } from "./PriceAlertPanel";
 import { PriceChart } from "./PriceChart";
 
 type DetailPaneLayout = "desktop" | "mobile";
@@ -43,11 +44,27 @@ interface TicketDetailPaneProps {
   activeLinePoints: LinePoint[];
   activeCandles: OHLCPoint[];
   resaleUrl: string;
+  alertSupported: boolean;
+  notificationPermission: NotificationPermission;
+  alertOpen: boolean;
+  alertBusy: boolean;
+  alertError: string | null;
+  alertSuccess: string | null;
+  alertLowerBound: string;
+  alertUpperBound: string;
+  alertLowerBoundPlaceholder: string;
+  alertUpperBoundPlaceholder: string;
+  hasSavedAlert: boolean;
   onBack: (() => void) | null;
   onToggleSymbolMenu: () => void;
   onSelectTicket: (ticket: TicketKey) => void;
   onIntervalChange: (interval: Interval) => void;
   onToggleMode: () => void;
+  onOpenAlert: () => Promise<void>;
+  onCloseAlert: () => void;
+  onAlertLowerBoundChange: (value: string) => void;
+  onAlertUpperBoundChange: (value: string) => void;
+  onAlertSubmit: () => Promise<void>;
   formatPrice: (value: number | null) => string;
   formatChange: (value: number | null) => string;
 }
@@ -101,11 +118,27 @@ export function TicketDetailPane({
   activeLinePoints,
   activeCandles,
   resaleUrl,
+  alertSupported,
+  notificationPermission,
+  alertOpen,
+  alertBusy,
+  alertError,
+  alertSuccess,
+  alertLowerBound,
+  alertUpperBound,
+  alertLowerBoundPlaceholder,
+  alertUpperBoundPlaceholder,
+  hasSavedAlert,
   onBack,
   onToggleSymbolMenu,
   onSelectTicket,
   onIntervalChange,
   onToggleMode,
+  onOpenAlert,
+  onCloseAlert,
+  onAlertLowerBoundChange,
+  onAlertUpperBoundChange,
+  onAlertSubmit,
   formatPrice,
   formatChange,
 }: TicketDetailPaneProps) {
@@ -116,22 +149,31 @@ export function TicketDetailPane({
     <div className="flex h-full min-h-0 flex-col">
       <header className="detail-header">
         <div className={isDesktop ? "py-4" : ""}>
-          <div className={isDesktop ? "relative min-w-0 overflow-hidden px-4" : "flex items-center gap-3 px-4 pt-4"}>
-            {!isDesktop && onBack ? (
-              <button type="button" onClick={onBack} className="back-button">
-                ←
-              </button>
-            ) : null}
+          <div className={isDesktop ? "relative min-w-0 overflow-visible px-4" : "px-4 pt-4"}>
             <div className={`relative min-w-0 ${isDesktop ? "" : "flex-1"}`}>
-              <div className="flex items-start justify-between gap-3 lg:flex-wrap">
-                <div className="min-w-0">
-                  <p className="market-kicker">
-                    Updated {lastCapturedAt ? formatDateTime(lastCapturedAt) : "—"}
-                  </p>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-3">
+                    {!isDesktop && onBack ? (
+                      <button type="button" onClick={onBack} className="back-link text-sm">
+                        ←
+                      </button>
+                    ) : null}
+                    <p className="market-kicker">
+                      Updated {lastCapturedAt ? formatDateTime(lastCapturedAt) : "—"}
+                    </p>
+                  </div>
+                  <div className="live-badge">
+                    <span className="live-pulse" />
+                    <span>Live</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
                   <button
                     type="button"
                     onClick={onToggleSymbolMenu}
-                    className="symbol-trigger"
+                    className="symbol-trigger min-w-0 flex-1"
                   >
                     <span className="truncate">
                       {activeTicket ? ticketLabel(activeTicket) : "Ticket"}
@@ -140,38 +182,29 @@ export function TicketDetailPane({
                       ▾
                     </span>
                   </button>
+
+                  <div className="flex flex-shrink-0 items-start">
+                    <PriceAlertPanel
+                      activeTicket={activeTicket}
+                      isSupported={alertSupported}
+                      permission={notificationPermission}
+                      isOpen={alertOpen}
+                      isBusy={alertBusy}
+                      error={alertError}
+                      success={alertSuccess}
+                      lowerBound={alertLowerBound}
+                      upperBound={alertUpperBound}
+                      lowerBoundPlaceholder={alertLowerBoundPlaceholder}
+                      upperBoundPlaceholder={alertUpperBoundPlaceholder}
+                      hasSavedAlert={hasSavedAlert}
+                      onOpen={onOpenAlert}
+                      onClose={onCloseAlert}
+                      onLowerBoundChange={onAlertLowerBoundChange}
+                      onUpperBoundChange={onAlertUpperBoundChange}
+                      onSubmit={onAlertSubmit}
+                    />
+                  </div>
                 </div>
-                {isDesktop ? (
-                  <div className="hidden lg:flex lg:max-w-full lg:flex-col lg:items-end lg:gap-2">
-                    <div className="live-badge">
-                      <span className="live-pulse" />
-                      <span>Live</span>
-                    </div>
-                    <div className="desktop-trade-actions">
-                      <a
-                        href={resaleUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="trade-btn trade-btn-buy"
-                      >
-                        Buy
-                      </a>
-                      <a
-                        href={resaleUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="trade-btn trade-btn-sell"
-                      >
-                        Sell
-                      </a>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="live-badge">
-                    <span className="live-pulse" />
-                    <span>Live</span>
-                  </div>
-                )}
               </div>
               {symbolMenuOpen && (
                 <div className="symbol-menu">
@@ -271,26 +304,24 @@ export function TicketDetailPane({
         />
       </div>
 
-      {!isDesktop ? (
-        <section className="trade-actions">
-          <a
-            href={resaleUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="trade-btn trade-btn-buy"
-          >
-            Buy
-          </a>
-          <a
-            href={resaleUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="trade-btn trade-btn-sell"
-          >
-            Sell
-          </a>
-        </section>
-      ) : null}
+      <section className="trade-actions">
+        <a
+          href={resaleUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="trade-btn trade-btn-buy"
+        >
+          Buy
+        </a>
+        <a
+          href={resaleUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="trade-btn trade-btn-sell"
+        >
+          Sell
+        </a>
+      </section>
     </div>
   );
 }

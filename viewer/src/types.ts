@@ -55,6 +55,24 @@ export interface SeasonBounds {
   end: string | null;
 }
 
+export interface StoredPushSubscription {
+  endpoint: string;
+  expirationTime: number | null;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
+export interface PriceAlertRecord {
+  id: number;
+  lower_bound: number | null;
+  upper_bound: number | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export const ALL_TICKETS: TicketKey[] = [
   { level: "regular", type: "All 3 Days" },
   { level: "regular", type: "Day 1" },
