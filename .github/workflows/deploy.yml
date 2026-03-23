@@ -15,7 +15,7 @@ jobs:
         working-directory: viewer
 
     env:
-      VITE_SUPABASE_URL: ${{ vars.AWS_SUPABASE_URL }}
+      VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON }}
       AWS_REGION: ${{ vars.AWS_REGION }}
       S3_BUCKET: ${{ vars.CHAINTNG_BLOGS_S3_BUCKET }}
