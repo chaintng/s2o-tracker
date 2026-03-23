@@ -1,4 +1,4 @@
-name: Deploy Application
+name: Release Application
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  deploy:
+  build-and-release:
     runs-on: ubuntu-latest
 
     steps:
@@ -16,10 +16,16 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '16'
+        node-version: '22'
 
     - name: Install dependencies
       run: npm install
 
-    - name: Deploy application
-      run: npm run deploy
+    - name: Build application
+      run: npm run build
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: build-artifact
+        path: ./build
