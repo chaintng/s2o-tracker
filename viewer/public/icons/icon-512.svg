@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0b0e11" />
+  <defs>
+    <linearGradient id="spark" x1="92" y1="384" x2="430" y2="140" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0ecb81" />
+      <stop offset="1" stop-color="#f0b90b" />
+    </linearGradient>
+  </defs>
+  <path
+    d="M102 320c54-24 92-22 136-86 40-60 64-118 138-118 20 0 37 4 51 11"
+    fill="none"
+    stroke="url(#spark)"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="34"
+  />
+  <path
+    d="M154 228h60l34 60 54-116 40 72h70"
+    fill="none"
+    stroke="#f0f4f8"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="26"
+  />
+</svg>

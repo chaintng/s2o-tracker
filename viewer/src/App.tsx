@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { PriceChart } from "./components/PriceChart";
 import { TicketDetailPane } from "./components/TicketDetailPane";
+import { usePriceAlert } from "./hooks/usePriceAlert";
 import { formatDateTime } from "./lib/ohlc";
 import { useTicketData } from "./hooks/useTicketData";
 import {
@@ -74,6 +75,7 @@ export default function App() {
     interval,
     focus,
   });
+  const priceAlert = usePriceAlert(activeTicket, focusOverview.currentPrice);
 
   useEffect(() => {
     if (activeTicket && !isSameTicket(activeTicket, focus)) {
@@ -192,13 +194,15 @@ export default function App() {
                             const color = TICKET_COLORS[ticketKey(key)] ?? "#f0b90b";
                             const rowDelay = `${(sectionIndex * 4 + index) * 35}ms`;
                             const shouldShowOfficialBuy = summary?.latestVolume === null;
+                            const isUnavailable = summary === null;
 
                             return (
                               <button
                                 key={ticketKey(key)}
                                 type="button"
                                 onClick={() => openDetail(key)}
-                                className="ticker-row animate-rise"
+                                disabled={isUnavailable}
+                                className={`ticker-row animate-rise ${isUnavailable ? "ticker-row-disabled" : ""}`}
                                 style={{ animationDelay: rowDelay }}
                               >
                                 <div className="flex min-w-0 items-center gap-3">
@@ -311,6 +315,17 @@ export default function App() {
                 activeLinePoints={activeLinePoints}
                 activeCandles={activeCandles}
                 resaleUrl={RESALE_URL}
+                alertSupported={priceAlert.isSupported}
+                notificationPermission={priceAlert.permission}
+                alertOpen={priceAlert.isOpen}
+                alertBusy={priceAlert.isBusy}
+                alertError={priceAlert.error}
+                alertSuccess={priceAlert.success}
+                alertLowerBound={priceAlert.lowerBound}
+                alertUpperBound={priceAlert.upperBound}
+                alertLowerBoundPlaceholder={priceAlert.lowerBoundPlaceholder}
+                alertUpperBoundPlaceholder={priceAlert.upperBoundPlaceholder}
+                hasSavedAlert={priceAlert.hasSavedAlert}
                 onBack={null}
                 onToggleSymbolMenu={() => setSymbolMenuOpen((open) => !open)}
                 onSelectTicket={(ticket) => {
@@ -319,6 +334,11 @@ export default function App() {
                 }}
                 onIntervalChange={setInterval}
                 onToggleMode={() => setMode(mode === "candlestick" ? "line" : "candlestick")}
+                onOpenAlert={priceAlert.handleBellClick}
+                onCloseAlert={priceAlert.handleClose}
+                onAlertLowerBoundChange={priceAlert.handleLowerBoundChange}
+                onAlertUpperBoundChange={priceAlert.handleUpperBoundChange}
+                onAlertSubmit={priceAlert.handleSubmit}
                 formatPrice={formatPrice}
                 formatChange={formatChange}
               />
@@ -351,6 +371,17 @@ export default function App() {
               activeLinePoints={activeLinePoints}
               activeCandles={activeCandles}
               resaleUrl={RESALE_URL}
+              alertSupported={priceAlert.isSupported}
+              notificationPermission={priceAlert.permission}
+              alertOpen={priceAlert.isOpen}
+              alertBusy={priceAlert.isBusy}
+              alertError={priceAlert.error}
+              alertSuccess={priceAlert.success}
+              alertLowerBound={priceAlert.lowerBound}
+              alertUpperBound={priceAlert.upperBound}
+              alertLowerBoundPlaceholder={priceAlert.lowerBoundPlaceholder}
+              alertUpperBoundPlaceholder={priceAlert.upperBoundPlaceholder}
+              hasSavedAlert={priceAlert.hasSavedAlert}
               onBack={() => setViewMode("market")}
               onToggleSymbolMenu={() => setSymbolMenuOpen((open) => !open)}
               onSelectTicket={(ticket) => {
@@ -359,6 +390,11 @@ export default function App() {
               }}
               onIntervalChange={setInterval}
               onToggleMode={() => setMode(mode === "candlestick" ? "line" : "candlestick")}
+              onOpenAlert={priceAlert.handleBellClick}
+              onCloseAlert={priceAlert.handleClose}
+              onAlertLowerBoundChange={priceAlert.handleLowerBoundChange}
+              onAlertUpperBoundChange={priceAlert.handleUpperBoundChange}
+              onAlertSubmit={priceAlert.handleSubmit}
               formatPrice={formatPrice}
               formatChange={formatChange}
             />
