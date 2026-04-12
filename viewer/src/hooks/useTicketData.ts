@@ -38,6 +38,7 @@ interface FocusOverview {
 interface UseTicketDataReturn {
   loading: boolean;
   error: string | null;
+  hasCurrentYearData: boolean;
   lastCapturedAt: string | null;
   seasonBounds: SeasonBounds;
   visibleSeries: ChartSeries[];
@@ -52,6 +53,20 @@ interface UseTicketDataReturn {
 
 const REFRESH_INTERVAL_MS = 2 * 60 * 1000;
 const CHANGE_RATE_WINDOW_MS = 24 * 60 * 60 * 1000;
+const APP_TIME_ZONE = "Asia/Bangkok";
+
+function getBangkokYear(date: Date): number {
+  return Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: APP_TIME_ZONE,
+      year: "numeric",
+    }).format(date)
+  );
+}
+
+function isCurrentBangkokYear(value: string): boolean {
+  return getBangkokYear(new Date(value)) === getBangkokYear(new Date());
+}
 
 function getSeasonBounds(records: BucketedRecord[]): SeasonBounds {
   if (records.length === 0) {
@@ -147,12 +162,15 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
   }, [options.interval]);
 
   return useMemo<UseTicketDataReturn>(() => {
-    const seasonBounds = getSeasonBounds(buckets);
+    const currentYearBuckets = buckets.filter((bucket) => isCurrentBangkokYear(bucket.bucket_at));
+    const hasCurrentYearData = currentYearBuckets.length > 0;
+    const displayBuckets = hasCurrentYearData ? currentYearBuckets : [];
+    const seasonBounds = getSeasonBounds(displayBuckets);
     const lastCapturedAt = seasonBounds.end;
     const grouped = new Map<string, BucketedRecord[]>();
 
     for (const ticket of ALL_TICKETS) {
-      const records = buckets.filter(
+      const records = displayBuckets.filter(
         (record) => record.ticket_level === ticket.level && record.ticket_type === ticket.type
       );
       if (records.length > 0) {
@@ -229,6 +247,7 @@ export function useTicketData(options: UseTicketDataOptions): UseTicketDataRetur
     return {
       loading,
       error,
+      hasCurrentYearData,
       lastCapturedAt,
       seasonBounds,
       visibleSeries,

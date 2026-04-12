@@ -9,6 +9,7 @@ import {
   Interval,
   TicketLevel,
   TicketKey,
+  TicketType,
   TICKET_COLORS,
   isSameTicket,
   ticketKey,
@@ -18,7 +19,20 @@ import {
 type ViewMode = "market" | "detail";
 const RESALE_URL = "https://resale.eventpop.me/e/s2o-2026?utm_source=chaintng-s2o-price-tracker";
 const OFFICIAL_BUY_URL = "https://www.eventpop.me/e/87299?utm_source=chaintng-s2o-price-tracker";
-const OFFICIAL_REGULAR_DAY_PASS_TICKET_PRICE = 2500;
+const DEFAULT_FIXED_PRICES: Record<TicketLevel, Record<TicketType, number | null>> = {
+  regular: {
+    "All 3 Days": null,
+    "Day 1": 2500,
+    "Day 2": 2500,
+    "Day 3": 2500,
+  },
+  vip: {
+    "All 3 Days": null,
+    "Day 1": null,
+    "Day 2": null,
+    "Day 3": null,
+  },
+};
 
 const INTERVAL_OPTIONS: { label: string; value: Interval }[] = [
   { label: "10m", value: "10m" },
@@ -60,6 +74,7 @@ export default function App() {
   const {
     loading,
     error,
+    hasCurrentYearData,
     lastCapturedAt,
     seasonBounds,
     visibleSeries,
@@ -191,7 +206,18 @@ export default function App() {
                           .map(({ key, summary }, index) => {
                             const color = TICKET_COLORS[ticketKey(key)] ?? "#f0b90b";
                             const rowDelay = `${(sectionIndex * 4 + index) * 35}ms`;
-                            const shouldShowOfficialBuy = summary?.latestVolume === null;
+                            const defaultFixedPrice = DEFAULT_FIXED_PRICES[key.level][key.type];
+                            const shouldUseDefaultFixedPrice = !hasCurrentYearData;
+                            const shouldShowOfficialBuy =
+                              shouldUseDefaultFixedPrice && defaultFixedPrice !== null;
+                            const priceLabel = shouldUseDefaultFixedPrice
+                              ? defaultFixedPrice === null
+                                ? "N/A"
+                                : formatPrice(defaultFixedPrice)
+                              : formatPrice(summary?.latestPrice ?? null);
+                            const changeLabel = shouldUseDefaultFixedPrice
+                              ? "N/A"
+                              : formatChange(summary?.changeRate ?? null);
 
                             return (
                               <button
@@ -212,9 +238,7 @@ export default function App() {
                                 </div>
                                 <div className="text-right">
                                   <p className="text-sm font-medium text-[#f0f4f8]">
-                                    {shouldShowOfficialBuy
-                                      ? formatPrice(OFFICIAL_REGULAR_DAY_PASS_TICKET_PRICE)
-                                      : formatPrice(summary?.latestPrice ?? null)}
+                                    {priceLabel}
                                   </p>
                                 </div>
                                 {shouldShowOfficialBuy ? (
@@ -239,14 +263,14 @@ export default function App() {
                                 {!shouldShowOfficialBuy ? (
                                   <div className="text-right">
                                     <p
-                                      className={`text-sm font-medium ${summary?.changeRate === null
+                                      className={`text-sm font-medium ${shouldUseDefaultFixedPrice || summary?.changeRate === null
                                         ? "text-[#848e9c]"
                                         : (summary?.changeRate ?? 0) >= 0
                                           ? "text-[#0ecb81]"
                                           : "text-[#f6465d]"
                                         }`}
                                     >
-                                      {formatChange(summary?.changeRate ?? null)}
+                                      {changeLabel}
                                     </p>
                                   </div>
                                 ) : null}
